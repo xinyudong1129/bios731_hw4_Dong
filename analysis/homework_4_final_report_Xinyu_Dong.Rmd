@@ -1,0 +1,267 @@
+---
+title: "Final_Report_BIOS731_homework4"
+author: "Xinyu Dong"
+date: "2026-04-14"
+output: pdf_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+## Problem 1: Gibbs Sampler Derivations
+
+We observe data $y=(y_1,\dots,y_n)$, latent cluster assignments
+$c=(c_1,\dots,c_n)$, and component means $\mu=(\mu_1,\dots,\mu_K)$. The
+model is $$
+\mu_k \sim N(0,\sigma^2), \qquad k=1,\dots,K,
+$$ $$
+c_i \sim \mathrm{Categorical}(1/K,\dots,1/K), \qquad i=1,\dots,n,
+$$ and $$
+y_i \mid c_i,\mu \sim N(\mu_{c_i},1), \qquad i=1,\dots,n.
+$$
+
+We derive a Gibbs sampler for the posterior $p(\mu,c\mid y)$.
+
+**1. Full conditional for** $c_i$
+
+For a fixed observation $i$, the full conditional is $$
+p(c_i = k \mid y_i,\mu)
+\propto p(y_i \mid c_i = k,\mu)\,p(c_i = k).
+$$ Since the prior on $c_i$ is uniform, $$
+p(c_i = k) = \frac{1}{K},
+$$ which is constant in $k$. Therefore, $$
+p(c_i = k \mid y_i,\mu)
+\propto p(y_i \mid c_i = k,\mu).
+$$ Under the model, $$
+y_i \mid c_i = k,\mu \sim N(\mu_k,1),
+$$ so $$
+p(y_i \mid c_i = k,\mu)
+\propto \exp\left\{-\frac{1}{2}(y_i-\mu_k)^2\right\}.
+$$ Hence $$
+p(c_i = k \mid y_i,\mu)
+\propto \exp\left\{-\frac{1}{2}(y_i-\mu_k)^2\right\}, \qquad k=1,\dots,K.
+$$ Normalizing over all $k$, $$
+p(c_i = k \mid y_i,\mu)
+=
+\frac{
+\exp\left\{-\frac{1}{2}(y_i-\mu_k)^2\right\}
+}{
+\sum_{\ell=1}^K
+\exp\left\{-\frac{1}{2}(y_i-\mu_\ell)^2\right\}
+}.
+$$ Therefore, the Gibbs update is $$
+c_i \mid y_i,\mu \sim \mathrm{Categorical}(p_{i1},\dots,p_{iK}),
+$$ where $$
+p_{ik}
+=
+\frac{
+\exp\left\{-\frac{1}{2}(y_i-\mu_k)^2\right\}
+}{
+\sum_{\ell=1}^K
+\exp\left\{-\frac{1}{2}(y_i-\mu_\ell)^2\right\}
+}.
+$$
+
+**2. Full conditional for** $\mu_k$
+
+Let $$
+I_k = \{i : c_i = k\}, \qquad n_k = |I_k|.
+$$ The prior for $\mu_k$ is $$
+\mu_k \sim N(0,\sigma^2),
+$$ so $$
+p(\mu_k) \propto \exp\left(-\frac{\mu_k^2}{2\sigma^2}\right).
+$$ The likelihood contribution from the observations assigned to cluster
+$k$ is $$
+\prod_{i:c_i=k} p(y_i \mid \mu_k)
+\propto
+\exp\left\{-\frac{1}{2}\sum_{i:c_i=k}(y_i-\mu_k)^2\right\}.
+$$ Thus, $$
+p(\mu_k \mid y,c)
+\propto
+\exp\left(-\frac{\mu_k^2}{2\sigma^2}\right)
+\exp\left\{-\frac{1}{2}\sum_{i:c_i=k}(y_i-\mu_k)^2\right\}.
+$$ Combining the exponents, $$
+p(\mu_k \mid y,c)
+\propto
+\exp\left\{
+-\frac{1}{2}
+\left[
+\frac{\mu_k^2}{\sigma^2}
++
+\sum_{i:c_i=k}(y_i-\mu_k)^2
+\right]
+\right\}.
+$$ Expand the quadratic term: $$
+\sum_{i:c_i=k}(y_i-\mu_k)^2
+=
+\sum_{i:c_i=k}(y_i^2 - 2y_i\mu_k + \mu_k^2)
+=
+\sum_{i:c_i=k} y_i^2
+-2\mu_k\sum_{i:c_i=k} y_i
++n_k\mu_k^2.
+$$ Substituting, $$
+p(\mu_k \mid y,c)
+\propto
+\exp\left\{
+-\frac{1}{2}
+\left[
+\left(n_k + \frac{1}{\sigma^2}\right)\mu_k^2
+-2\mu_k\sum_{i:c_i=k} y_i
++\sum_{i:c_i=k} y_i^2
+\right]
+\right\}.
+$$ Dropping terms not involving $\mu_k$, $$
+p(\mu_k \mid y,c)
+\propto
+\exp\left\{
+-\frac{1}{2}
+\left[
+\left(n_k + \frac{1}{\sigma^2}\right)\mu_k^2
+-2\mu_k\sum_{i:c_i=k} y_i
+\right]
+\right\}.
+$$ This is the kernel of a normal density. Therefore, $$
+\mu_k \mid y,c \sim N(m_k,V_k),
+$$ where $$
+V_k = \left(n_k + \frac{1}{\sigma^2}\right)^{-1},
+\qquad
+m_k = V_k \sum_{i:c_i=k} y_i.
+$$ Equivalently, $$
+\mu_k \mid y, c \sim \mathcal{N}\left(
+\frac{\sum_{i:c_i=k} y_i}{\,n_k + 1/\sigma^2\,},
+\;\frac{1}{\,n_k + 1/\sigma^2\,}
+\right).
+$$
+
+If $n_k = 0$, then $$
+\mu_k \mid y, c \sim \mathcal{N}(0, \sigma^2).
+$$ **3. Gibbs sampler updates**
+
+The Gibbs sampler alternates between the following two steps:
+
+$$
+c_i \mid y_i,\mu \sim \mathrm{Categorical}(p_{i1},\dots,p_{iK}),
+$$ where
+
+$$
+p_{ik}
+=
+\frac{
+\exp\left\{-\frac{1}{2}(y_i-\mu_k)^2\right\}
+}{
+\sum_{\ell=1}^K
+\exp\left\{-\frac{1}{2}(y_i-\mu_\ell)^2\right\}
+},
+\qquad i=1,\dots,n,
+$$ and
+
+$$
+\mu_k \mid y,c \sim
+N\left(
+\frac{\sum_{i:c_i=k} y_i}{n_k + 1/\sigma^2},
+\;
+\frac{1}{n_k + 1/\sigma^2}
+\right),
+\qquad k=1,\dots,K.
+$$
+
+Thus, at each iteration, we first update all cluster assignments
+$c_1,\dots,c_n$, and then update all component means
+$\mu_1,\dots,\mu_K$.
+
+In summary, we consider a Bayesian mixture model of unit-variance
+univariate Gaussians. The model is $$
+\mu_k \sim N(0,\sigma^2), \qquad k=1,\dots,K,
+$$ $$
+c_i \sim \mathrm{Categorical}(1/K,\dots,1/K), \qquad i=1,\dots,n,
+$$ and $$
+y_i \mid c_i,\mu \sim N(\mu_{c_i},1), \qquad i=1,\dots,n.
+$$
+
+We derive a Gibbs sampler for the posterior distribution
+$p(\mu,c \mid y)$.
+
+For the cluster assignment $c_i$, the full conditional is $$
+p(c_i = k \mid y_i,\mu)
+\propto p(y_i \mid c_i = k,\mu)p(c_i = k).
+$$ Since $p(c_i = k)=1/K$ is constant in $k$, this simplifies to $$
+p(c_i = k \mid y_i,\mu)
+\propto \exp\left\{-\frac{1}{2}(y_i-\mu_k)^2\right\}.
+$$ Therefore, $$
+p(c_i = k \mid y_i,\mu)
+=
+\frac{
+\exp\left\{-\frac{1}{2}(y_i-\mu_k)^2\right\}
+}{
+\sum_{\ell=1}^K
+\exp\left\{-\frac{1}{2}(y_i-\mu_\ell)^2\right\}
+}.
+$$
+
+For the component mean $\mu_k$, let $n_k = \sum_{i=1}^n I(c_i=k)$.
+Combining the normal prior and normal likelihood gives $$
+\mu_k \mid y,c \sim N(m_k,V_k),
+$$ where
+
+$$
+V_k = \left(n_k + \frac{1}{\sigma^2}\right)^{-1},
+\qquad
+m_k = V_k \sum_{i:c_i=k} y_i.
+$$ Equivalently,
+
+$$
+\mu_k \mid y,c \sim
+N\left(
+\frac{\sum_{i:c_i=k} y_i}{n_k + 1/\sigma^2},
+\;
+\frac{1}{n_k + 1/\sigma^2}
+\right).
+$$
+
+Thus, the Gibbs sampler alternates between:
+
+1.  updating each $c_i$ from its categorical full conditional, and
+
+2.  updating each $\mu_k$ from its normal full conditional.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+library(here)
+source(here::here("source", "gibbs_k_mixture.R"))
+```
+
+The Gibbs sampler was implemented in `source/gibbs_k_mixture.R` and
+called from the main R Markdown file using
+`source(here::here("source", "gibbs_k_mixture.R"))`. Posterior draws for
+the component means and cluster assignments were stored after burn-in,
+and posterior summaries were written to `results/gibbs_k_mixture/` using
+`here::here()`. Specifically, the output includes posterior means and
+standard deviations for each $\mu_k$, as well as posterior cluster
+probabilities and MAP cluster assignments for each observation.
+
+```{r run-gibbs}
+set.seed(1)
+
+n <- 150
+K <- 3
+sigma2 <- 25
+
+true_mu <- c(-3, 0, 4)
+true_c <- sample(1:K, size = n, replace = TRUE)
+y <- rnorm(n, mean = true_mu[true_c], sd = 1)
+
+fit <- gibbs_k_mixture(
+  y = y,
+  K = K,
+  sigma2 = sigma2,
+  n_iter = 6000,
+  burn_in = 1000,
+  seed = 2026,
+  save_output = TRUE
+)
+
+fit$summaries$mu_summary
+head(fit$summaries$cluster_summary)
+
+```
