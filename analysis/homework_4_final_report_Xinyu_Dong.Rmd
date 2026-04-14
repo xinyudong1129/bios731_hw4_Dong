@@ -446,3 +446,323 @@ m_k
 =
 s_k^2 \sum_{i=1}^n r_{ik}y_i,
 $$ for $k=1,\dots,K$. Iteration continues until the ELBO converges.
+
+In short, we use a mean-field variational approximation of the form $$
+q(\mu,c)=\prod_{k=1}^K q(\mu_k)\prod_{i=1}^n q(c_i),
+$$ with $$
+q(\mu_k)=N(m_k,s_k^2), \qquad q(c_i=k)=r_{ik}.
+$$
+
+Applying the coordinate ascent variational inference update, $$
+\log q_j^*(z_j)=\mathbb{E}_{-j}[\log p(y,z)]+\text{constant},
+$$ gives the following updates.
+
+For the cluster assignments, $$
+r_{ik}
+=
+\frac{
+\exp\left\{
+y_i m_k - \frac{1}{2}(m_k^2+s_k^2)
+\right\}
+}{
+\sum_{\ell=1}^K
+\exp\left\{
+y_i m_\ell - \frac{1}{2}(m_\ell^2+s_\ell^2)
+\right\}
+}.
+$$
+
+For the component means, $$
+q(\mu_k)=N(m_k,s_k^2),
+$$ where $$
+s_k^2
+=
+\left(\frac{1}{\sigma^2}+\sum_{i=1}^n r_{ik}\right)^{-1},
+\qquad
+m_k
+=
+s_k^2 \sum_{i=1}^n r_{ik} y_i.
+$$
+
+The algorithm iterates between these updates until convergence of the
+ELBO. The ELBO is monitored at every iteration to verify that the
+variational approximation stabilizes.
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+library(here)
+source(here::here("source", "variational_k_mixture.R"))
+```
+
+```{r run-vi}
+set.seed(1)
+
+n <- 150
+K <- 3
+sigma2 <- 25
+
+true_mu <- c(-3, 0, 4)
+true_c <- sample(1:K, size = n, replace = TRUE)
+y <- rnorm(n, mean = true_mu[true_c], sd = 1)
+
+fit_vi <- variational_k_mixture(
+  y = y,
+  K = K,
+  sigma2 = sigma2,
+  max_iter = 1000,
+  tol = 1e-8,
+  seed = 2026,
+  save_output = TRUE
+)
+
+fit_vi$summaries$mu_summary
+head(fit_vi$summaries$cluster_summary)
+tail(fit_vi$summaries$elbo_summary)
+```
+
+The CAVI algorithm was implemented in `source/variational_k_mixture.R`
+and called from the main R Markdown file using
+`source(here::here("source", "variational_k_mixture.R"))`. The algorithm
+iteratively updated the variational cluster probabilities $r_{ik}$ and
+the normal variational parameters $(m_k,s_k^2)$ for the component means.
+Convergence was monitored using the ELBO, and final posterior summaries
+were saved to `results/variational_k_mixture/` using `here::here()`.
+
+## Problem 3
+
+I fit both the Gibbs sampler from Problem 1 and the coordinate ascent
+variational inference algorithm from Problem 2 to the Old Faithful
+waiting-time data, using the `faithful$waiting` variable from the base R
+dataset. Because the model in Problems 1 and 2 assumes unit observation
+variance within each mixture component, I standardized the waiting times
+before fitting: $$
+y_i^{\ast} = \frac{y_i-\bar y}{s_y}.
+$$ This makes the fixed unit-variance assumption more appropriate. Final
+component mean estimates were then transformed back to the original
+waiting-time scale for interpretation.
+
+For variational inference, I ran the CAVI algorithm until convergence of
+the ELBO. For the Gibbs sampler, I ran multiple chains with dispersed
+initial values. To improve interpretability of the diagnostics and
+reduce the effect of label switching, I ordered the sampled component
+means within each saved Gibbs iteration before computing posterior
+summaries and convergence diagnostics.
+
+I compared the methods in two ways. First, I compared computation time
+using the elapsed time reported by `system.time()`. Second, I compared
+the fitted component mean estimates by contrasting the variational Bayes
+estimates with the posterior mean estimates from the Gibbs sampler.
+
+For the Gibbs sampler, I also examined trace plots, autocorrelation
+plots, Gelman--Rubin diagnostics, and effective sample sizes.
+Convergence was assessed by checking whether the chains mixed well
+around a stable region and whether the potential scale reduction factors
+were close to 1. Effective sample size was used to summarize the amount
+of independent posterior information retained after accounting for
+autocorrelation.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+library(here)
+library(coda)
+
+source(here::here("source", "gibbs_k_mixture.R"))
+source(here::here("source", "variational_k_mixture.R"))
+source(here::here("source", "fit_faithful_problem3.R"))
+```
+
+The following chunk runs both fitting procedures, saves all output files
+under `results/problem3_faithful/`, and returns the summary objects used
+below.
+
+```{r run-problem3}
+fit_p3 <- fit_faithful_problem3(
+  K = 2,
+  sigma2 = 25,
+  gibbs_n_iter = 10000,
+  gibbs_burn_in = 2000,
+  vi_max_iter = 2000,
+  vi_tol = 1e-8,
+  n_chains = 4,
+  seeds = c(101, 202, 303, 404),
+  save_output = TRUE
+)
+
+```
+
+**Computation time comparison**
+
+I first compared the elapsed computation time for variational inference
+and the Gibbs sampler. Since variational inference uses deterministic
+coordinate updates, it is expected to run substantially faster than the
+Gibbs sampler, which relies on Monte Carlo sampling.
+
+```{r}
+kable(
+  fit_p3$timing_summary,
+  digits = 3,
+  caption = "Computation time comparison for variational inference and Gibbs sampling."
+)
+```
+
+**Comparison of estimated component means**
+
+Next, I compared the estimated component means from the two methods. The
+Gibbs estimates are posterior mean estimates computed from the saved
+MCMC draws, while the variational Bayes estimates are the final
+variational means. I report the estimates on both the standardized scale
+and the original waiting-time scale.
+
+```{r}
+kable(
+  fit_p3$comparison_summary,
+  digits = 4,
+  caption = "Comparison of component mean estimates from Gibbs sampling and variational Bayes."
+)
+```
+
+The table above allows direct comparison of the two fitting approaches.
+In general, the variational estimates are close to the Gibbs posterior
+means if the variational approximation captures the main posterior
+location well.
+
+**Effective sample size**
+
+For the Gibbs sampler, I next examined effective sample size. The
+effective sample size adjusts the raw number of posterior draws for
+autocorrelation and indicates how much independent Monte Carlo
+information is available for each parameter.
+
+```{r}
+kable(
+  fit_p3$ess_summary,
+  digits = 2,
+  caption = "Effective sample size for the ordered Gibbs component means."
+)
+```
+
+The effective sample sizes for both parameters are relatively large (approximately 4000), indicating that the Gibbs sampler mixes well and produces a substantial number of effectively independent samples. Although some autocorrelation is present—as expected in MCMC sampling-the ESS values suggest that the loss of efficiency due to dependence is modest. Overall, this indicates that the Gibbs sampler is performing efficiently and provides reliable posterior estimates.
+
+**Gelman--Rubin convergence diagnostic**
+
+I also computed the Gelman--Rubin diagnostic across the multiple Gibbs
+chains. Values close to 1 indicate that the chains have mixed to a
+common stationary distribution.
+
+```{r}
+kable(
+  fit_p3$gelman_summary,
+  digits = 4,
+  caption = "Gelman--Rubin diagnostic summary for the ordered Gibbs component means."
+)
+```
+
+The point estimates and upper confidence limits are close to 1,
+supporting convergence of the Gibbs sampler.
+
+**Gibbs trace plots**
+
+The trace plots below show the ordered Gibbs draws for the component
+means across multiple chains. These plots are useful for checking
+whether the chains fluctuate around stable regions and whether the
+different chains overlap well after burn-in.
+
+```{r}
+knitr::include_graphics(
+  here::here("results", "problem3_faithful", "gibbs_traceplots.png")
+)
+```
+
+The chains appear to mix well without long-term drift and occupy similar
+regions of the parameter space, suggesting good convergence.
+
+**Gibbs autocorrelation plots**
+
+The autocorrelation plots below show the dependence structure in the
+Gibbs draws. Because MCMC samples are not independent, some
+autocorrelation is expected. However, faster decay in autocorrelation
+indicates more efficient sampling.
+
+```{r}
+knitr::include_graphics(
+  here::here("results", "problem3_faithful", "gibbs_acfplots.png")
+)
+```
+
+The autocorrelation declines reasonably quickly, suggesting that the
+Gibbs sampler is producing useful posterior information without
+requiring excessively long runs.
+
+**Gelman plot**
+
+The following plot gives a visual summary of the Gelman--Rubin
+diagnostic over increasing portions of the chain.
+
+```{r}
+knitr::include_graphics(
+  here::here("results", "problem3_faithful", "gibbs_gelmanplot.png")
+)
+```
+
+As we can see, the between-chain variation and within-chain variation
+become similar as the chains progress.
+
+**ELBO plot for variational inference**
+
+For variational inference, convergence was monitored using the evidence
+lower bound (ELBO). Since CAVI is a coordinate ascent procedure, the
+ELBO should typically increase and then stabilize.
+
+```{r}
+knitr::include_graphics(
+  here::here("results", "problem3_faithful", "vi_elbo_plot.png")
+)
+```
+
+The variational approximation converged quickly, indicated by the stable
+ELBO trace shown in the plot.
+
+**Histogram of the data with fitted component means**
+
+Finally, the plot below shows the histogram of the original Old Faithful
+waiting times, together with the estimated component means from the
+Gibbs sampler and variational Bayes on the original scale.
+
+```{r}
+knitr::include_graphics(
+  here::here("results", "problem3_faithful", "faithful_histogram_means.png")
+)
+```
+
+This figure provides a direct visual comparison of the fitted component
+locations under the two methods.
+
+*In summary*, the variational Bayes algorithm was expected to run much
+faster than the Gibbs sampler because it uses deterministic optimization
+rather than stochastic simulation. The Gibbs sampler, however, provides
+a fuller posterior characterization and allows the use of standard MCMC
+diagnostics.
+
+Comparing the estimated component means indicates whether the
+variational approximation recovers the main location structure of the
+posterior distribution. If the variational means are close to the Gibbs
+posterior means, then the variational approximation is performing well
+at least for posterior location.
+
+For the Gibbs sampler, convergence is supported when the trace plots
+show stable mixing, the Gelman--Rubin statistics are close to 1, and the
+effective sample sizes are reasonably large. Some autocorrelation is
+expected, so the effective sample size will be smaller than the raw
+number of saved draws, but sufficiently large ESS values still indicate
+reliable posterior inference.
+
+Overall, this comparison highlights the main tradeoff between the two
+approaches: variational inference is computationally faster, while Gibbs
+sampling provides richer posterior uncertainty information and standard
+Monte Carlo diagnostics.
+
+
+
