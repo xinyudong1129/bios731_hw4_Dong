@@ -265,3 +265,184 @@ fit$summaries$mu_summary
 head(fit$summaries$cluster_summary)
 
 ```
+
+## Problem 2: Variational inference derivations
+
+We approximate the posterior distribution $p(\mu,c \mid y)$ using a
+mean-field variational family $$
+q(\mu,c)=\prod_{k=1}^K q(\mu_k)\prod_{i=1}^n q(c_i).
+$$ We assume $$
+q(\mu_k)=N(m_k,s_k^2), \qquad q(c_i=k)=r_{ik}, \qquad \sum_{k=1}^K r_{ik}=1.
+$$
+
+The model is $$
+\mu_k \sim N(0,\sigma^2), \qquad k=1,\dots,K,
+$$ $$
+c_i \sim \mathrm{Categorical}(1/K,\dots,1/K), \qquad i=1,\dots,n,
+$$ $$
+y_i \mid c_i,\mu \sim N(\mu_{c_i},1), \qquad i=1,\dots,n.
+$$
+
+**1. Update for** $q(c_i)$
+
+By the mean-field formula, $$
+\log q^*(c_i)
+=
+\mathbb{E}_{q(\mu)\,q(c_{-i})}\big[\log p(y,c,\mu)\big] + \text{constant}.
+$$ Keeping only the terms involving $c_i$, $$
+\log q^*(c_i=k)
+=
+\mathbb{E}_{q(\mu)}
+\left[
+\log p(c_i=k)+\log p(y_i\mid c_i=k,\mu)
+\right]
++\text{constant}.
+$$ Since $p(c_i=k)=1/K$, $$
+\log q^*(c_i=k)
+=
+\log(1/K)
++
+\mathbb{E}_{q(\mu_k)}
+\left[
+-\frac{1}{2}(y_i-\mu_k)^2
+\right]
++\text{constant}.
+$$ Now, $$
+\mathbb{E}_{q(\mu_k)}[(y_i-\mu_k)^2]
+=
+y_i^2 - 2y_i\mathbb{E}[\mu_k] + \mathbb{E}[\mu_k^2].
+$$ Because $q(\mu_k)=N(m_k,s_k^2)$, $$
+\mathbb{E}[\mu_k]=m_k,
+\qquad
+\mathbb{E}[\mu_k^2]=m_k^2+s_k^2.
+$$ Therefore, $$
+\log q^*(c_i=k)
+=
+-\frac{1}{2}\left[y_i^2 - 2y_i m_k + (m_k^2+s_k^2)\right]
++\text{constant}.
+$$ Dropping terms that do not depend on $k$, $$
+\log q^*(c_i=k)
+=
+y_i m_k - \frac{1}{2}(m_k^2+s_k^2)+\text{constant}.
+$$ Hence, $$
+r_{ik}=q(c_i=k)
+\propto
+\exp\left\{
+y_i m_k - \frac{1}{2}(m_k^2+s_k^2)
+\right\},
+$$ so the normalized update is $$
+r_{ik}
+=
+\frac{
+\exp\left\{
+y_i m_k - \frac{1}{2}(m_k^2+s_k^2)
+\right\}
+}{
+\sum_{\ell=1}^K
+\exp\left\{
+y_i m_\ell - \frac{1}{2}(m_\ell^2+s_\ell^2)
+\right\}
+}.
+$$
+
+**2. Update for** $q(\mu_k)$
+
+Again by the mean-field formula, $$
+\log q^*(\mu_k)
+=
+\mathbb{E}_{q(c)\,q(\mu_{-k})}
+\big[\log p(y,c,\mu)\big]+\text{constant}.
+$$ Keeping only the terms involving $\mu_k$, $$
+\log q^*(\mu_k)
+=
+-\frac{\mu_k^2}{2\sigma^2}
++
+\sum_{i=1}^n
+\mathbb{E}_{q(c_i)}
+\left[
+I(c_i=k)\left(-\frac{1}{2}(y_i-\mu_k)^2\right)
+\right]
++\text{constant}.
+$$ Since $\mathbb{E}_{q(c_i)}[I(c_i=k)] = r_{ik}$, $$
+\log q^*(\mu_k)
+=
+-\frac{\mu_k^2}{2\sigma^2}
+-\frac{1}{2}\sum_{i=1}^n r_{ik}(y_i-\mu_k)^2
++\text{constant}.
+$$ Expanding, $$
+\log q^*(\mu_k)
+=
+-\frac{1}{2}
+\left[
+\left(\frac{1}{\sigma^2}+\sum_{i=1}^n r_{ik}\right)\mu_k^2
+-2\mu_k\sum_{i=1}^n r_{ik}y_i
+\right]
++\text{constant}.
+$$ Thus $q(\mu_k)$ is normal: $$
+q(\mu_k)=N(m_k,s_k^2),
+$$ with $$
+s_k^2
+=
+\left(\frac{1}{\sigma^2}+\sum_{i=1}^n r_{ik}\right)^{-1},
+\qquad
+m_k
+=
+s_k^2 \sum_{i=1}^n r_{ik}y_i.
+$$
+
+**3. ELBO**
+
+The evidence lower bound is $$
+\mathcal{L}(q)=\mathbb{E}_q[\log p(y,c,\mu)]-\mathbb{E}_q[\log q(c,\mu)].
+$$ It can be written as $$
+\mathcal{L}(q)
+=
+\sum_{k=1}^K
+\left[
+-\frac{1}{2}\log(2\pi\sigma^2)
+-\frac{1}{2\sigma^2}(m_k^2+s_k^2)
+\right]
+-n\log K
+$$ $$
+\quad
++
+\sum_{i=1}^n\sum_{k=1}^K
+r_{ik}
+\left[
+-\frac{1}{2}\log(2\pi)
+-\frac{1}{2}\big(y_i^2-2y_i m_k + m_k^2+s_k^2\big)
+\right]
+$$
+
+$$
+\quad
++
+\sum_{k=1}^K \frac{1}{2}\log(2\pi e s_k^2)
+-
+\sum_{i=1}^n\sum_{k=1}^K r_{ik}\log r_{ik}.
+$$
+
+**4. Final CAVI updates**
+
+The CAVI algorithm alternates between $$
+r_{ik}
+=
+\frac{
+\exp\left\{
+y_i m_k - \frac{1}{2}(m_k^2+s_k^2)
+\right\}
+}{
+\sum_{\ell=1}^K
+\exp\left\{
+y_i m_\ell - \frac{1}{2}(m_\ell^2+s_\ell^2)
+\right\}
+},
+$$ for $i=1,\dots,n$, $k=1,\dots,K$, and $$
+s_k^2
+=
+\left(\frac{1}{\sigma^2}+\sum_{i=1}^n r_{ik}\right)^{-1},
+\qquad
+m_k
+=
+s_k^2 \sum_{i=1}^n r_{ik}y_i,
+$$ for $k=1,\dots,K$. Iteration continues until the ELBO converges.
