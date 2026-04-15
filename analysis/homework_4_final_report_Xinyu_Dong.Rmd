@@ -245,6 +245,32 @@ and posterior summaries were written to `results/gibbs_k_mixture/` using
 standard deviations for each $\mu_k$, as well as posterior cluster
 probabilities and MAP cluster assignments for each observation.
 
+```{r}
+# Global plot settings for this figure block
+layout(matrix(c(1,2,3,4), 2, 2, byrow = TRUE), widths = c(3, 1))
+
+op <- par(
+  mar = c(3, 3, 2, 1),   # smaller margins
+  mgp = c(1.8, 0.5, 0),  # tighter axis labels
+  tcl = -0.25,           # inward ticks
+  cex.main = 0.9,
+  cex.lab  = 0.85,
+  cex.axis = 0.8,
+  xaxs = "i",            # remove extra padding
+  yaxs = "i"
+)
+```
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  fig.align = "center",
+  out.width = "60%"
+)
+```
+
+
 ```{r run-gibbs}
 set.seed(1)
 
@@ -663,7 +689,7 @@ I also computed the Gelman--Rubin diagnostic across the multiple Gibbs
 chains. Values close to 1 indicate that the chains have mixed to a
 common stationary distribution.
 
-```{r}
+```{r,fig.width=8, fig.height=6}
 kable(
   fit_p3$gelman_summary,
   digits = 4,
@@ -681,7 +707,7 @@ means across multiple chains. These plots are useful for checking
 whether the chains fluctuate around stable regions and whether the
 different chains overlap well after burn-in.
 
-```{r}
+```{r,fig.width=8, fig.height=6}
 knitr::include_graphics(
   here::here("results", "problem3_faithful", "gibbs_traceplots.png")
 )
@@ -697,7 +723,7 @@ Gibbs draws. Because MCMC samples are not independent, some
 autocorrelation is expected. However, faster decay in autocorrelation
 indicates more efficient sampling.
 
-```{r}
+```{r,fig.width=8, fig.height=6}
 knitr::include_graphics(
   here::here("results", "problem3_faithful", "gibbs_acfplots.png")
 )
@@ -712,7 +738,7 @@ requiring excessively long runs.
 The following plot gives a visual summary of the Gelman--Rubin
 diagnostic over increasing portions of the chain.
 
-```{r}
+```{r,fig.width=8, fig.height=6}
 knitr::include_graphics(
   here::here("results", "problem3_faithful", "gibbs_gelmanplot.png")
 )
@@ -727,7 +753,7 @@ For variational inference, convergence was monitored using the evidence
 lower bound (ELBO). Since CAVI is a coordinate ascent procedure, the
 ELBO should typically increase and then stabilize.
 
-```{r}
+```{r,fig.width=8, fig.height=6}
 knitr::include_graphics(
   here::here("results", "problem3_faithful", "vi_elbo_plot.png")
 )
@@ -742,7 +768,7 @@ Finally, the plot below shows the histogram of the original Old Faithful
 waiting times, together with the estimated component means from the
 Gibbs sampler and variational Bayes on the original scale.
 
-```{r}
+```{r,fig.width=8, fig.height=6}
 knitr::include_graphics(
   here::here("results", "problem3_faithful", "faithful_histogram_means.png")
 )
@@ -882,7 +908,7 @@ knitr::kable(
 
 The plot below summarizes bias across sample sizes, methods, and components. The error bars represent Monte Carlo standard errors.
 
-```{r}
+```{r,fig.width=8, fig.height=6}
 knitr::include_graphics(
   here::here("results", "simulation_study", "summaries", "bias_plot.png")
 )
@@ -893,7 +919,7 @@ knitr::include_graphics(
 
 The next plot summarizes empirical coverage of 95% intervals. The dashed horizontal line marks the nominal level of 0.95.
 
-```{r}
+```{r,fig.width=8, fig.height=6}
 knitr::include_graphics(
   here::here("results", "simulation_study", "summaries", "coverage_plot.png")
 )
@@ -905,10 +931,15 @@ knitr::include_graphics(
 Finally, the plot below compares computation time between Gibbs sampling and variational Bayes across sample sizes.
 
 
-```{r}
+```{r,fig.width=8, fig.height=6}
 knitr::include_graphics(
   here::here("results", "simulation_study", "summaries", "time_plot.png")
 )
+
+
+
+par(op)
+layout(1)
 ```
 
 
