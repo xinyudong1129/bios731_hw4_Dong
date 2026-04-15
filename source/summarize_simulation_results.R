@@ -10,7 +10,9 @@ summarize_simulation_results <- function() {
   n_vals <- c(100, 1000, 10000)
   
   res_list <- lapply(n_vals, function(n) {
-    read.csv(here::here("results", "simulation_study", paste0("n_", n), "scenario_results.csv"))
+    read.csv(
+      here::here("results", "simulation_study", paste0("n_", n), "combined", "scenario_results.csv")
+    )
   })
   
   dat <- bind_rows(res_list)

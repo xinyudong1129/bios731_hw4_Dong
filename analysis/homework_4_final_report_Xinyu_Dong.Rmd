@@ -8,6 +8,11 @@ editor_options:
     wrap: 72
 ---
 
+## github link:
+
+https://github.com/xinyudong1129/bios731_hw4_Dong
+
+
 ## Problem 1: Gibbs Sampler Derivations
 
 We observe data $y=(y_1,\dots,y_n)$, latent cluster assignments
@@ -224,7 +229,7 @@ Thus, the Gibbs sampler alternates between:
 
 2.  updating each $\mu_k$ from its normal full conditional.
 
-```{r setup, include=FALSE}
+```{r, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
 library(here)
@@ -488,7 +493,7 @@ The algorithm iterates between these updates until convergence of the
 ELBO. The ELBO is monitored at every iteration to verify that the
 variational approximation stabilizes.
 
-```{r setup, include=FALSE}
+```{r, include=FALSE}
 library(knitr)
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
@@ -563,7 +568,7 @@ were close to 1. Effective sample size was used to summarize the amount
 of independent posterior information retained after accounting for
 autocorrelation.
 
-```{r setup, include=FALSE}
+```{r, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
 library(here)
@@ -806,7 +811,8 @@ $$
 $$
 
 ```{r problem4-setup, include=FALSE}
-library(here) library(dplyr)
+library(here) 
+library(dplyr)
 library(knitr)
 
 source(here::here("source", "summarize_simulation_results.R"))
