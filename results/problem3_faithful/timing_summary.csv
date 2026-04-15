@@ -1,7 +1,7 @@
 "method","elapsed_seconds"
-"VI",0.640000000000001
-"Gibbs_chain_1",13.48
-"Gibbs_chain_2",13.33
-"Gibbs_chain_3",13.75
-"Gibbs_chain_4",13.78
-"Gibbs_total",54.34
+"VI",0.64
+"Gibbs_chain_1",13.94
+"Gibbs_chain_2",15.56
+"Gibbs_chain_3",13.39
+"Gibbs_chain_4",12.97
+"Gibbs_total",55.86
