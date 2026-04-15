@@ -644,7 +644,13 @@ kable(
 )
 ```
 
-The effective sample sizes for both parameters are relatively large (approximately 4000), indicating that the Gibbs sampler mixes well and produces a substantial number of effectively independent samples. Although some autocorrelation is present—as expected in MCMC sampling-the ESS values suggest that the loss of efficiency due to dependence is modest. Overall, this indicates that the Gibbs sampler is performing efficiently and provides reliable posterior estimates.
+The effective sample sizes for both parameters are relatively large
+(approximately 4000), indicating that the Gibbs sampler mixes well and
+produces a substantial number of effectively independent samples.
+Although some autocorrelation is present—as expected in MCMC
+sampling-the ESS values suggest that the loss of efficiency due to
+dependence is modest. Overall, this indicates that the Gibbs sampler is
+performing efficiently and provides reliable posterior estimates.
 
 **Gelman--Rubin convergence diagnostic**
 
@@ -753,7 +759,7 @@ posterior means, then the variational approximation is performing well
 at least for posterior location.
 
 For the Gibbs sampler, convergence is supported when the trace plots
-show stable mixing, the Gelman--Rubin statistics are close to 1, and the
+show stable mixing, the Gelman-Rubin statistics are close to 1, and the
 effective sample sizes are reasonably large. Some autocorrelation is
 expected, so the effective sample size will be smaller than the raw
 number of saved draws, but sufficiently large ESS values still indicate
@@ -763,6 +769,155 @@ Overall, this comparison highlights the main tradeoff between the two
 approaches: variational inference is computationally faster, while Gibbs
 sampling provides richer posterior uncertainty information and standard
 Monte Carlo diagnostics.
+
+## Problem 4: Simulation study on the cluster
+
+In this simulation study, I generated data from a four-component
+Gaussian mixture model with true component means $$
+\mu = (0,5,10,20)
+$$ and unit observation variance. I compared the Gibbs sampler and the
+variational Bayes algorithm in terms of bias, coverage, and computation
+time.
+
+The simulation scenarios were defined by the sample sizes $$
+n \in \{100,1000,10000\},
+$$ with $500$ simulated data-sets per scenario. For the Gibbs sampler, I
+used chains of length $10000$ and discarded the first $2000$ iterations
+as burn-in. Each sample size scenario was submitted as a separate
+cluster job, so that each scenario had its own JOBID, as required.
+
+Because mixture models are invariant to relabeling of the components, I
+sorted the estimated component means before comparing them to the true
+ordered means $(0,5,10,20)$. This allowed bias and coverage to be
+computed consistently across replications.
+
+For each method, sample size, and component mean, I computed: - the
+Monte Carlo estimate of bias, - the Monte Carlo estimate of coverage of
+a 95% interval, - the average computation time.
+
+I also calculated Monte Carlo standard errors for each summary. For bias
+and computation time, the Monte Carlo standard error was computed as the
+sample standard deviation across replications divided by $\sqrt{500}$.
+For coverage, the Monte Carlo standard error was computed using the
+binomial approximation 
+
+$$
+\sqrt{\hat p(1-\hat p)/500}.
+$$
+
+```{r problem4-setup, include=FALSE}
+library(here) library(dplyr)
+library(knitr)
+
+source(here::here("source", "summarize_simulation_results.R"))
+source(here::here("source", "plot_simulation_results.R"))
+
+```
+
+
+
+**Summarize the simulation output**
+
+After all three cluster jobs completed, I combined and summarized the results across the three sample sizes.
+
+
+```{r}
+sim_summaries <- summarize_simulation_results()
+
+plot_simulation_results(
+  summary_bias_cov = sim_summaries$summary_bias_cov,
+  summary_time = sim_summaries$summary_time
+)
+```
+
+
+**Bias summary table**
+
+The table below reports the estimated bias for each component mean, together with Monte Carlo standard errors.
+
+
+```{r}
+knitr::kable(
+  sim_summaries$summary_bias_cov %>%
+    select(n, method, component, mu_true, bias, mcse_bias),
+  digits = 4,
+  caption = "Bias of component mean estimates with Monte Carlo standard errors."
+)
+```
+
+**Coverage summary table**
+
+The next table reports the estimated coverage probabilities of the nominal 95% intervals, together with Monte Carlo standard errors.
+
+```{r}
+knitr::kable(
+  sim_summaries$summary_bias_cov %>%
+    select(n, method, component, mu_true, coverage, mcse_coverage),
+  digits = 4,
+  caption = "Coverage of 95% intervals with Monte Carlo standard errors."
+)
+```
+
+
+**Computation time table**
+
+The following table reports the mean computation time for each method and sample size, along with Monte Carlo standard errors.
+
+```{r}
+knitr::kable(
+  sim_summaries$summary_time,
+  digits = 4,
+  caption = "Average computation time with Monte Carlo standard errors."
+)
+```
+
+
+**Bias plot**
+
+The plot below summarizes bias across sample sizes, methods, and components. The error bars represent Monte Carlo standard errors.
+
+```{r}
+knitr::include_graphics(
+  here::here("results", "simulation_study", "summaries", "bias_plot.png")
+)
+```
+
+
+**Coverage plot**
+
+The next plot summarizes empirical coverage of 95% intervals. The dashed horizontal line marks the nominal level of 0.95.
+
+```{r}
+knitr::include_graphics(
+  here::here("results", "simulation_study", "summaries", "coverage_plot.png")
+)
+```
+
+
+**Computation time plot**
+
+Finally, the plot below compares computation time between Gibbs sampling and variational Bayes across sample sizes.
+
+
+```{r}
+knitr::include_graphics(
+  here::here("results", "simulation_study", "summaries", "time_plot.png")
+)
+```
+
+
+**Interpretation**
+
+This simulation study compares the statistical and computational performance of Gibbs sampling and variational Bayes in a controlled four-component mixture setting. Bias measures whether the point estimates are centered around the true component means, while coverage measures whether the uncertainty intervals achieve their nominal 95% level.
+
+As the sample size increases, both methods are expected to produce more stable estimates, reflected in reduced bias and improved interval behavior. Computation time is also expected to increase with sample size, especially for Gibbs sampling, since it relies on repeated Monte Carlo sampling. Variational Bayes is expected to be substantially faster because it uses deterministic coordinate ascent updates.
+
+The Monte Carlo standard error bars quantify the simulation uncertainty in the reported summaries. Smaller bars indicate that the corresponding simulation estimate is more precisely estimated from the 500 replications.
+
+
+
+The simulation study showed the expected tradeoff between the two methods. Variational Bayes was consistently faster than the Gibbs sampler at all sample sizes, with the gap widening as \(n\) increased. In terms of estimation accuracy, Gibbs sampling generally produced smaller bias and more reliable coverage, while variational Bayes was more computationally efficient but could show undercoverage or instability for some components. As the sample size increased, both methods became more stable, and the Monte Carlo standard error bars narrowed, indicating more precise simulation summaries.
+
 
 
 
